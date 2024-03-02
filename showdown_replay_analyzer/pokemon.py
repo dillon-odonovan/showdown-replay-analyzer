@@ -2,7 +2,11 @@
 """
 
 import dataclasses
+import re
 from typing import List
+
+
+_CAPITAL_WORDS = re.compile(r'([a-z])([A-Z])')
 
 
 @dataclasses.dataclass
@@ -29,41 +33,40 @@ class Pokemon:
         species: The species of the Pokemon
         nickname: The nickname of the Pokemon
         tera_type: The Tera type of the Pokemon
-        move1: The first move of the Pokemon
-        move2: The second move of the Pokemon
-        move3: The third move of the Pokemon
-        move4: The fourth move of the Pokemon
+        moves: The moves of the Pokemon
+        struggle: Pokemon can have a 5th move of Struggle if all PP of all other moves is 0
     """
     species: str
     nickname: str = None
     tera_type: str = None
-    move1: Move = None
-    move2: Move = None
-    move3: Move = None
-    move4: Move = None
+    moves: List[Move] = dataclasses.field(default_factory=lambda: [])
+    _struggle: Move = dataclasses.field(
+        default_factory=lambda: Move('Struggle')
+    )
 
-    def add_move(self, move_name: str) -> None:
+    def add_move(self, move_name: str) -> Move:
         """Adds a new move to this Pokemon.
 
         Arguments:
             move_name: The name of the move
 
+        Returns:
+            The created move
+
         Raises:
             RuntimeError: If this Pokemon already has 4 moves.
         """
-        if self.move4:
+        move_name = self._sanitize_move(move_name)
+
+        if move_name == 'Struggle':
+            return self._struggle
+
+        if len(self.moves) == 4:
             raise RuntimeError('A Pokemon can only have a maximum of 4 moves')
 
-        move = Move(name=move_name, times_used=1)
-
-        if self.move3:
-            self.move4 = move
-        elif self.move2:
-            self.move3 = move
-        elif self.move1:
-            self.move2 = move
-        else:
-            self.move1 = move
+        move = Move(name=move_name)
+        self.moves.append(move)
+        return move
 
     def find_move(self, move_name: str) -> Move:
         """Finds a move by name.
@@ -75,11 +78,26 @@ class Pokemon:
             The move with the given name or None if no move with that name exists.
         """
         try:
-            return next(move
-                        for move in [self.move1, self.move2, self.move3, self.move4]
-                        if move.name == move_name.replace(' ', ''))
+            if move_name == 'Struggle':
+                return self._struggle
+
+            return next(
+                move
+                for move in self.moves
+                if move.name == move_name
+            )
         except StopIteration:
             return None
+
+    @staticmethod
+    def _sanitize_move(move_name: str) -> str:
+        if move_name == 'FreezeDry':
+            return 'Freeze-Dry'
+
+        if move_name == 'Uturn':
+            move_name = 'U-turn'
+
+        return _CAPITAL_WORDS.sub(r'\1 \2', move_name)
 
 
 @dataclasses.dataclass
@@ -114,7 +132,11 @@ class Team:
             The Pokemon with the given nickname or None if no Pokemon with that nickname exists.
         """
         try:
-            return next(p for p in self.pokemon if p.nickname.split('-')[0] == nickname)
+            return next(
+                p
+                for p in self.pokemon
+                if nickname == p.nickname.split('-Tera')[0]
+            )
         except StopIteration:
             return None
 
@@ -128,8 +150,10 @@ class Team:
             The Pokemon with the given species or None if no Pokemon with that species exists.
         """
         try:
-            return next(p
-                        for p in self.pokemon
-                        if p.species == species or p.species.split('-')[0] == species)
+            return next(
+                p
+                for p in self.pokemon
+                if p.species in (species or p.species.split('-')[0])
+            )
         except StopIteration:
             return None

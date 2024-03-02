@@ -12,15 +12,19 @@ class ShowdownReplayParserTests(unittest.TestCase):
         factory = showdown.ShowdownReplayRetrievalStrategyFactory()
         location = 'https://replay.pokemonshowdown.com/id'
         strategy = factory.resolve_strategy(location)
-        self.assertIsInstance(strategy,
-                              showdown.ShowdownUrlReplayRetrievalStrategy)
+        self.assertIsInstance(
+            strategy,
+            showdown.ShowdownUrlReplayRetrievalStrategy
+        )
 
     def test_showdown_replay_retrieval_factory_download(self):
         factory = showdown.ShowdownReplayRetrievalStrategyFactory()
         location = get_resource_location(_SHOWDOWN_REPLAY_RESOURCE)
         strategy = factory.resolve_strategy(location)
-        self.assertIsInstance(strategy,
-                              showdown.ShowdownDownloadReplayRetrievalStrategy)
+        self.assertIsInstance(
+            strategy,
+            showdown.ShowdownDownloadReplayRetrievalStrategy
+        )
 
     def test_showdown_downloaded_replay_retrieval_strategy(self):
         location = get_resource_location(_SHOWDOWN_REPLAY_RESOURCE)
@@ -33,6 +37,164 @@ class ShowdownReplayParserTests(unittest.TestCase):
         battle_log = showdown.ShowdownDownloadReplayRetrievalStrategy().retrieve_replay(location)
         parsed_replay = showdown.parse_replay(battle_log)
         expected_replay = _get_expected_showdown_replay()
+        self.assertEqual(parsed_replay, expected_replay)
+
+    def test_parse_replay_no_tera(self):
+        battle_log = r'''
+        |player|p1|Tears ricochet|170|1529
+        |player|p2|Quarter Machine|2|1730
+        |showteam|p1|Regidrago||DragonFang|DragonsMaw|DragonEnergy,DracoMeteor,EarthPower,Protect||||||50|,,,,,Steel]Flutter Mane||BoosterEnergy|Protosynthesis|Moonblast,IcyWind,Thunderbolt,Protect||||||50|,,,,,Electric
+        |showteam|p2|Flutter Mane||BoosterEnergy|Protosynthesis|Protect,Moonblast,ShadowBall,DazzlingGleam||||||50|,,,,,Fairy]Tornadus||FocusSash|Prankster|Protect,BleakwindStorm,Tailwind,RainDance|||M|||50|,,,,,Ghost
+        |switch|p1a: Flutter Mane|Flutter Mane, L50|100\/100
+        |switch|p1b: Regidrago|Regidrago, L50|100\/100
+        |switch|p2a: Tornadus|Tornadus, L50, M|157\/157
+        |switch|p2b: Flutter Mane|Flutter Mane, L50|137\/137
+        |win|Quarter Machine'''
+        parsed_replay = showdown.parse_replay(battle_log)
+        p1_regidrago = pokemon.Pokemon(
+            species='Regidrago',
+            nickname='Regidrago',
+            tera_type='Steel',
+            moves=[
+                pokemon.Move(name='Dragon Energy'),
+                pokemon.Move(name='Draco Meteor'),
+                pokemon.Move(name='Earth Power'),
+                pokemon.Move(name='Protect')
+            ]
+        )
+        p1_flutter = pokemon.Pokemon(
+            species='Flutter Mane',
+            nickname='Flutter Mane',
+            tera_type='Electric',
+            moves=[
+                pokemon.Move(name='Moonblast'),
+                pokemon.Move(name='Icy Wind'),
+                pokemon.Move(name='Thunderbolt'),
+                pokemon.Move(name='Protect')
+            ]
+        )
+        p2_flutter = pokemon.Pokemon(
+            species='Flutter Mane',
+            nickname='Flutter Mane',
+            tera_type='Fairy',
+            moves=[
+                pokemon.Move(name='Protect'),
+                pokemon.Move(name='Moonblast'),
+                pokemon.Move(name='Shadow Ball'),
+                pokemon.Move(name='Dazzling Gleam')
+            ]
+        )
+        p2_tornadus = pokemon.Pokemon(
+            species='Tornadus',
+            nickname='Tornadus',
+            tera_type='Ghost',
+            moves=[
+                pokemon.Move(name='Protect'),
+                pokemon.Move(name='Bleakwind Storm'),
+                pokemon.Move(name='Tailwind'),
+                pokemon.Move(name='Rain Dance')
+            ]
+        )
+        p1 = showdown.PlayerInfo(
+            player_name='Tears ricochet',
+            team=pokemon.Team([p1_regidrago, p1_flutter]),
+            tera_pokemon=None,
+            leads=[p1_flutter, p1_regidrago],
+            brought_to_battle=[p1_flutter, p1_regidrago]
+        )
+        p2 = showdown.PlayerInfo(
+            player_name='Quarter Machine',
+            team=pokemon.Team([p2_flutter, p2_tornadus]),
+            tera_pokemon=None,
+            leads=[p2_tornadus, p2_flutter],
+            brought_to_battle=[p2_tornadus, p2_flutter]
+        )
+        expected_replay = showdown.ShowdownReplay(
+            player1_info=p1,
+            player2_info=p2,
+            winner=2,
+            is_ots=True
+        )
+        self.assertEqual(parsed_replay, expected_replay)
+
+    def test_parse_replay_struggle(self):
+        battle_log = r'''
+        |player|p1|Tears ricochet|170|1529
+        |player|p2|Quarter Machine|2|1730
+        |showteam|p1|Regidrago||DragonFang|DragonsMaw|DragonEnergy,DracoMeteor,EarthPower,Protect||||||50|,,,,,Steel]Flutter Mane||BoosterEnergy|Protosynthesis|Moonblast,IcyWind,Thunderbolt,Protect||||||50|,,,,,Electric
+        |showteam|p2|Flutter Mane||BoosterEnergy|Protosynthesis|Protect,Moonblast,ShadowBall,DazzlingGleam||||||50|,,,,,Fairy]Tornadus||FocusSash|Prankster|Protect,BleakwindStorm,Tailwind,RainDance|||M|||50|,,,,,Ghost
+        |switch|p1a: Flutter Mane|Flutter Mane, L50|100\/100
+        |switch|p1b: Regidrago|Regidrago, L50|100\/100
+        |switch|p2a: Tornadus|Tornadus, L50, M|157\/157
+        |switch|p2b: Flutter Mane|Flutter Mane, L50|137\/137
+        |move|p1a: Flutter Mane|Struggle|p2a: Tornadus
+        |win|Quarter Machine'''
+        parsed_replay = showdown.parse_replay(battle_log)
+        p1_regidrago = pokemon.Pokemon(
+            species='Regidrago',
+            nickname='Regidrago',
+            tera_type='Steel',
+            moves=[
+                pokemon.Move(name='Dragon Energy'),
+                pokemon.Move(name='Draco Meteor'),
+                pokemon.Move(name='Earth Power'),
+                pokemon.Move(name='Protect')
+            ]
+        )
+        p1_flutter = pokemon.Pokemon(
+            species='Flutter Mane',
+            nickname='Flutter Mane',
+            tera_type='Electric',
+            moves=[
+                pokemon.Move(name='Moonblast'),
+                pokemon.Move(name='Icy Wind'),
+                pokemon.Move(name='Thunderbolt'),
+                pokemon.Move(name='Protect')
+            ],
+            _struggle=pokemon.Move(name='Struggle', times_used=1)
+        )
+        p2_flutter = pokemon.Pokemon(
+            species='Flutter Mane',
+            nickname='Flutter Mane',
+            tera_type='Fairy',
+            moves=[
+                pokemon.Move(name='Protect'),
+                pokemon.Move(name='Moonblast'),
+                pokemon.Move(name='Shadow Ball'),
+                pokemon.Move(name='Dazzling Gleam')
+            ]
+        )
+        p2_tornadus = pokemon.Pokemon(
+            species='Tornadus',
+            nickname='Tornadus',
+            tera_type='Ghost',
+            moves=[
+                pokemon.Move(name='Protect'),
+                pokemon.Move(name='Bleakwind Storm'),
+                pokemon.Move(name='Tailwind'),
+                pokemon.Move(name='Rain Dance')
+            ]
+        )
+        p1 = showdown.PlayerInfo(
+            player_name='Tears ricochet',
+            team=pokemon.Team([p1_regidrago, p1_flutter]),
+            tera_pokemon=None,
+            leads=[p1_flutter, p1_regidrago],
+            brought_to_battle=[p1_flutter, p1_regidrago]
+        )
+        p2 = showdown.PlayerInfo(
+            player_name='Quarter Machine',
+            team=pokemon.Team([p2_flutter, p2_tornadus]),
+            tera_pokemon=None,
+            leads=[p2_tornadus, p2_flutter],
+            brought_to_battle=[p2_tornadus, p2_flutter]
+        )
+        expected_replay = showdown.ShowdownReplay(
+            player1_info=p1,
+            player2_info=p2,
+            winner=2,
+            is_ots=True
+        )
         self.assertEqual(parsed_replay, expected_replay)
 
 
@@ -274,149 +436,188 @@ def _get_expected_battle_log() -> str:
 
 
 def _get_expected_showdown_replay() -> showdown.ShowdownReplay:
-    player1_ogerpon_hearthflame = pokemon.Pokemon(species='Ogerpon-Hearthflame',
-                                                  nickname='Ogerpon',
-                                                  tera_type='Fire',
-                                                  move1=pokemon.Move('IvyCudgel',
-                                                                     times_used=2),
-                                                  move2=pokemon.Move(
-                                                      'GrassyGlide'),
-                                                  move3=pokemon.Move(
-                                                      'FollowMe'),
-                                                  move4=pokemon.Move('SpikyShield',
-                                                                     times_used=1))
-    player1_regidrago = pokemon.Pokemon(species='Regidrago',
-                                        nickname='Regidrago',
-                                        tera_type='Steel',
-                                        move1=pokemon.Move('DragonEnergy'),
-                                        move2=pokemon.Move('DracoMeteor',
-                                                           times_used=1),
-                                        move3=pokemon.Move('EarthPower',
-                                                           times_used=1),
-                                        move4=pokemon.Move('Protect',
-                                                           times_used=1))
-    player1_rillaboom = pokemon.Pokemon(species='Rillaboom',
-                                        nickname='Rillaboom',
-                                        tera_type='Fire',
-                                        move1=pokemon.Move('GrassyGlide',
-                                                           times_used=3),
-                                        move2=pokemon.Move('FakeOut'),
-                                        move3=pokemon.Move('HighHorsepower'),
-                                        move4=pokemon.Move('WoodHammer'))
-    player1_urshifu = pokemon.Pokemon(species='Urshifu',
-                                      nickname='Urshifu',
-                                      tera_type='Dark',
-                                      move1=pokemon.Move('WickedBlow'),
-                                      move2=pokemon.Move('CloseCombat'),
-                                      move3=pokemon.Move('SuckerPunch'),
-                                      move4=pokemon.Move('Protect'))
-    player1_flutter_mane = pokemon.Pokemon(species='Flutter Mane',
-                                           nickname='Flutter Mane',
-                                           tera_type='Electric',
-                                           move1=pokemon.Move('Moonblast'),
-                                           move2=pokemon.Move('IcyWind',
-                                                              times_used=2),
-                                           move3=pokemon.Move('Thunderbolt'),
-                                           move4=pokemon.Move('Protect',
-                                                              times_used=1))
-    player1_farigiraf = pokemon.Pokemon(species='Farigiraf',
-                                        nickname='Farigiraf',
-                                        tera_type='Fairy',
-                                        move1=pokemon.Move('Psychic'),
-                                        move2=pokemon.Move('DazzlingGleam'),
-                                        move3=pokemon.Move('TrickRoom'),
-                                        move4=pokemon.Move('HelpingHand'))
-    player1_team = pokemon.Team(pokemon=[
-        player1_ogerpon_hearthflame,
-        player1_regidrago,
-        player1_rillaboom,
-        player1_urshifu,
-        player1_flutter_mane,
-        player1_farigiraf
-    ])
-    player1_info = showdown.PlayerInfo(player_name='Tears ricochet',
-                                       team=player1_team,
-                                       tera_pokemon=player1_ogerpon_hearthflame,
-                                       leads=[player1_flutter_mane,
-                                              player1_regidrago],
-                                       brought_to_battle=[player1_flutter_mane,
-                                                          player1_regidrago,
-                                                          player1_ogerpon_hearthflame,
-                                                          player1_rillaboom])
+    player1_ogerpon_hearthflame = pokemon.Pokemon(
+        species='Ogerpon-Hearthflame',
+        nickname='Ogerpon',
+        tera_type='Fire',
+        moves=[
+            pokemon.Move('Ivy Cudgel', times_used=2),
+            pokemon.Move('Grassy Glide'),
+            pokemon.Move('Follow Me'),
+            pokemon.Move('Spiky Shield', times_used=1)
+        ]
+    )
+    player1_regidrago = pokemon.Pokemon(
+        species='Regidrago',
+        nickname='Regidrago',
+        tera_type='Steel',
+        moves=[
+            pokemon.Move('Dragon Energy'),
+            pokemon.Move('Draco Meteor', times_used=1),
+            pokemon.Move('Earth Power', times_used=1),
+            pokemon.Move('Protect', times_used=1)
+        ]
+    )
+    player1_rillaboom = pokemon.Pokemon(
+        species='Rillaboom',
+        nickname='Rillaboom',
+        tera_type='Fire',
+        moves=[
+            pokemon.Move('Grassy Glide', times_used=3),
+            pokemon.Move('Fake Out'),
+            pokemon.Move('High Horsepower'),
+            pokemon.Move('Wood Hammer')
+        ]
+    )
+    player1_urshifu = pokemon.Pokemon(
+        species='Urshifu',
+        nickname='Urshifu',
+        tera_type='Dark',
+        moves=[
+            pokemon.Move('Wicked Blow'),
+            pokemon.Move('Close Combat'),
+            pokemon.Move('Sucker Punch'),
+            pokemon.Move('Protect')
+        ]
+    )
+    player1_flutter_mane = pokemon.Pokemon(
+        species='Flutter Mane',
+        nickname='Flutter Mane',
+        tera_type='Electric',
+        moves=[
+            pokemon.Move('Moonblast'),
+            pokemon.Move('Icy Wind', times_used=2),
+            pokemon.Move('Thunderbolt'),
+            pokemon.Move('Protect', times_used=1)
+        ]
+    )
+    player1_farigiraf = pokemon.Pokemon(
+        species='Farigiraf',
+        nickname='Farigiraf',
+        tera_type='Fairy',
+        moves=[
+            pokemon.Move('Psychic'),
+            pokemon.Move('Dazzling Gleam'),
+            pokemon.Move('Trick Room'),
+            pokemon.Move('Helping Hand')
+        ]
+    )
+    player1_team = pokemon.Team(
+        pokemon=[
+            player1_ogerpon_hearthflame,
+            player1_regidrago,
+            player1_rillaboom,
+            player1_urshifu,
+            player1_flutter_mane,
+            player1_farigiraf
+        ]
+    )
+    player1_info = showdown.PlayerInfo(
+        player_name='Tears ricochet',
+        team=player1_team,
+        tera_pokemon=player1_ogerpon_hearthflame,
+        leads=[player1_flutter_mane, player1_regidrago],
+        brought_to_battle=[
+            player1_flutter_mane,
+            player1_regidrago,
+            player1_ogerpon_hearthflame,
+            player1_rillaboom
+        ]
+    )
 
-    player2_amoonguss = pokemon.Pokemon(species='Amoonguss',
-                                        nickname='Amoonguss',
-                                        tera_type='Water',
-                                        move1=pokemon.Move('Protect',
-                                                           times_used=1),
-                                        move2=pokemon.Move('SludgeBomb',
-                                                           times_used=1),
-                                        move3=pokemon.Move('Spore',
-                                                           times_used=1),
-                                        move4=pokemon.Move('RagePowder',
-                                                           times_used=1))
-    player2_urshifu = pokemon.Pokemon(species='Urshifu-Rapid-Strike',
-                                      nickname='Urshifu',
-                                      tera_type='Water',
-                                      move1=pokemon.Move('CloseCombat'),
-                                      move2=pokemon.Move('SurgingStrikes'),
-                                      move3=pokemon.Move('AquaJet'),
-                                      move4=pokemon.Move('Uturn'))
-    player2_flutter_mane = pokemon.Pokemon(species='Flutter Mane',
-                                           nickname='Flutter Mane',
-                                           tera_type='Fairy',
-                                           move1=pokemon.Move('Protect',
-                                                              times_used=2),
-                                           move2=pokemon.Move('Moonblast'),
-                                           move3=pokemon.Move('ShadowBall',
-                                                              times_used=2),
-                                           move4=pokemon.Move('DazzlingGleam',
-                                                              times_used=4))
-    player2_tornadus = pokemon.Pokemon(species='Tornadus',
-                                       nickname='Tornadus',
-                                       tera_type='Ghost',
-                                       move1=pokemon.Move('Protect'),
-                                       move2=pokemon.Move('BleakwindStorm',
-                                                          times_used=2),
-                                       move3=pokemon.Move('Tailwind',
-                                                          times_used=1),
-                                       move4=pokemon.Move('RainDance'))
-    player2_incineroar = pokemon.Pokemon(species='Incineroar',
-                                         nickname='Incineroar',
-                                         tera_type='Dragon',
-                                         move1=pokemon.Move('FakeOut'),
-                                         move2=pokemon.Move('PartingShot'),
-                                         move3=pokemon.Move('FlareBlitz'),
-                                         move4=pokemon.Move('KnockOff'))
-    player2_landorus = pokemon.Pokemon(species='Landorus',
-                                       nickname='Landorus',
-                                       tera_type='Steel',
-                                       move1=pokemon.Move('Protect'),
-                                       move2=pokemon.Move('EarthPower'),
-                                       move3=pokemon.Move('Substitute',
-                                                          times_used=1),
-                                       move4=pokemon.Move('SludgeBomb',
-                                                          times_used=1))
-    player2_team = pokemon.Team(pokemon=[
-        player2_amoonguss,
-        player2_urshifu,
-        player2_flutter_mane,
-        player2_tornadus,
-        player2_incineroar,
-        player2_landorus
-    ])
-    player2_info = showdown.PlayerInfo(player_name='Quarter Machine',
-                                       team=player2_team,
-                                       tera_pokemon=player2_flutter_mane,
-                                       leads=[player2_tornadus,
-                                              player2_flutter_mane],
-                                       brought_to_battle=[player2_tornadus,
-                                                          player2_flutter_mane,
-                                                          player2_landorus,
-                                                          player2_amoonguss])
-    return showdown.ShowdownReplay(player1_info=player1_info,
-                                   player2_info=player2_info,
-                                   winner=2)
+    player2_amoonguss = pokemon.Pokemon(
+        species='Amoonguss',
+        nickname='Amoonguss',
+        tera_type='Water',
+        moves=[
+            pokemon.Move('Protect', times_used=1),
+            pokemon.Move('Sludge Bomb', times_used=1),
+            pokemon.Move('Spore', times_used=1),
+            pokemon.Move('Rage Powder', times_used=1)
+        ]
+    )
+    player2_urshifu = pokemon.Pokemon(
+        species='Urshifu-Rapid-Strike',
+        nickname='Urshifu',
+        tera_type='Water',
+        moves=[
+            pokemon.Move('Close Combat'),
+            pokemon.Move('Surging Strikes'),
+            pokemon.Move('Aqua Jet'),
+            pokemon.Move('U-turn')
+        ]
+    )
+    player2_flutter_mane = pokemon.Pokemon(
+        species='Flutter Mane',
+        nickname='Flutter Mane',
+        tera_type='Fairy',
+        moves=[
+            pokemon.Move('Protect', times_used=2),
+            pokemon.Move('Moonblast'),
+            pokemon.Move('Shadow Ball', times_used=2),
+            pokemon.Move('Dazzling Gleam', times_used=4)
+        ]
+    )
+    player2_tornadus = pokemon.Pokemon(
+        species='Tornadus',
+        nickname='Tornadus',
+        tera_type='Ghost',
+        moves=[
+            pokemon.Move('Protect'),
+            pokemon.Move('Bleakwind Storm', times_used=2),
+            pokemon.Move('Tailwind', times_used=1),
+            pokemon.Move('Rain Dance')
+        ]
+    )
+    player2_incineroar = pokemon.Pokemon(
+        species='Incineroar',
+        nickname='Incineroar',
+        tera_type='Dragon',
+        moves=[
+            pokemon.Move('Fake Out'),
+            pokemon.Move('Parting Shot'),
+            pokemon.Move('Flare Blitz'),
+            pokemon.Move('Knock Off')
+        ]
+    )
+    player2_landorus = pokemon.Pokemon(
+        species='Landorus',
+        nickname='Landorus',
+        tera_type='Steel',
+        moves=[
+            pokemon.Move('Protect'),
+            pokemon.Move('Earth Power'),
+            pokemon.Move('Substitute', times_used=1),
+            pokemon.Move('Sludge Bomb', times_used=1)
+        ]
+    )
+    player2_team = pokemon.Team(
+        pokemon=[
+            player2_amoonguss,
+            player2_urshifu,
+            player2_flutter_mane,
+            player2_tornadus,
+            player2_incineroar,
+            player2_landorus
+        ]
+    )
+    player2_info = showdown.PlayerInfo(
+        player_name='Quarter Machine',
+        team=player2_team,
+        tera_pokemon=player2_flutter_mane,
+        leads=[player2_tornadus, player2_flutter_mane],
+        brought_to_battle=[
+            player2_tornadus,
+            player2_flutter_mane,
+            player2_landorus,
+            player2_amoonguss
+        ]
+    )
+    return showdown.ShowdownReplay(
+        player1_info=player1_info,
+        player2_info=player2_info,
+        winner=2
+    )
 
 
 if __name__ == '__main__':

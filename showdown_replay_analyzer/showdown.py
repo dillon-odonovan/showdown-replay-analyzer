@@ -17,7 +17,7 @@ from typing import List
 import bs4
 import requests
 
-from .pokemon import Move, Pokemon, Team
+from .pokemon import Pokemon, Team
 
 
 class ShowdownReplayRetrievalStrategy(abc.ABC):
@@ -49,10 +49,14 @@ class ShowdownDownloadReplayRetrievalStrategy(ShowdownReplayRetrievalStrategy):
     def retrieve_replay(self, location: str) -> str:
         with open(location, 'r', encoding='utf8') as f:
             showdown_replay_raw_html = f.read()
-            parsed_html = bs4.BeautifulSoup(showdown_replay_raw_html,
-                                            'html.parser')
-            battle_log_data = parsed_html.find('script',
-                                               class_='battle-log-data')
+            parsed_html = bs4.BeautifulSoup(
+                showdown_replay_raw_html,
+                'html.parser'
+            )
+            battle_log_data = parsed_html.find(
+                'script',
+                class_='battle-log-data'
+            )
             return textwrap.dedent(battle_log_data.text)
 
 
@@ -131,6 +135,8 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
     player2: str
     player1_team: Team = Team(pokemon=[])
     player2_team: Team = Team(pokemon=[])
+    player1_tera = None
+    player2_tera = None
     player1_brought = collections.OrderedDict()
     player2_brought = collections.OrderedDict()
 
@@ -139,7 +145,11 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
     for line in battle_log.split('\n'):
         if not line:
             continue
+
         command_parts = line.split('|')
+        if len(command_parts) == 1:
+            continue
+
         command = command_parts[1]
 
         match command:
@@ -186,13 +196,13 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
                         else None
                     command_parts = command_parts[12 - index_buffer:]
                     index_buffer = 1
-                    pokemon = Pokemon(species=species,
-                                      nickname=species.split('-')[0],
-                                      tera_type=tera_type,
-                                      move1=Move(moves[0]),
-                                      move2=Move(moves[1]),
-                                      move3=Move(moves[2]),
-                                      move4=Move(moves[3]))
+                    pokemon = Pokemon(
+                        species=species,
+                        nickname=species.split('-')[0],
+                        tera_type=tera_type
+                    )
+                    for move in moves:
+                        pokemon.add_move(move_name=move)
                     team = player1_team \
                         if _is_player1(player_number) \
                         else player2_team
@@ -220,11 +230,11 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
                 team = player1_team if player_number == 'p1' else player2_team
                 move_name = command_parts[3]
                 pokemon = team.find_by_nickname(nickname)
+
                 move = pokemon.find_move(move_name)
-                if move:
-                    move.increment_count()
-                else:
-                    pokemon.add_move(move_name)
+                if not move:
+                    move = pokemon.add_move(move_name)
+                move.increment_count()
 
             case '-terastallize':
                 # |-terastallize|p1a: nickname|type|
@@ -235,25 +245,29 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
                     else player2_team
                 pokemon = team.find_by_nickname(nickname)
                 if _is_player1(player_number):
-                    p1_tera = pokemon
+                    player1_tera = pokemon
                 else:
-                    p2_tera = pokemon
+                    player2_tera = pokemon
 
             case 'win':
                 # |win|player|
                 winner_name = command_parts[2]
                 winner = int(winner_name == player2) + 1
 
-    player1_info = PlayerInfo(player_name=player1,
-                              team=player1_team,
-                              tera_pokemon=p1_tera,
-                              leads=_resolve_leads(player1_brought),
-                              brought_to_battle=list(player1_brought.values()))
-    player2_info = PlayerInfo(player_name=player2,
-                              team=player2_team,
-                              tera_pokemon=p2_tera,
-                              leads=_resolve_leads(player2_brought),
-                              brought_to_battle=list(player2_brought.values()))
+    player1_info = PlayerInfo(
+        player_name=player1,
+        team=player1_team,
+        tera_pokemon=player1_tera,
+        leads=_resolve_leads(player1_brought),
+        brought_to_battle=list(player1_brought.values())
+    )
+    player2_info = PlayerInfo(
+        player_name=player2,
+        team=player2_team,
+        tera_pokemon=player2_tera,
+        leads=_resolve_leads(player2_brought),
+        brought_to_battle=list(player2_brought.values())
+    )
 
     return ShowdownReplay(player1_info=player1_info,
                           player2_info=player2_info,

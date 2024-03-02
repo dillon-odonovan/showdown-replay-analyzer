@@ -8,7 +8,6 @@ _URL = 'https://pokepast.es/some-random-id'
 
 
 class PokepasteParserTests(unittest.TestCase):
-
     def test_pokepaste_parser(self):
         with unittest.mock.patch('requests.get', return_value=create_mock('pokepaste-example.html')) as mock:
             parsed_team = pokepaste.parse_pokepaste(_URL)
@@ -30,55 +29,67 @@ def _get_expected_team() -> pokemon.Team:
             species='Magmar',
             nickname='Magmar',
             tera_type='Grass',
-            move1=pokemon.Move('Protect'),
-            move2=pokemon.Move('Follow Me'),
-            move3=pokemon.Move('Helping Hand'),
-            move4=pokemon.Move('Flamethrower')
+            moves=[
+                pokemon.Move('Protect'),
+                pokemon.Move('Follow Me'),
+                pokemon.Move('Helping Hand'),
+                pokemon.Move('Flamethrower')
+            ]
         ),
         pokemon.Pokemon(
             species='Kingambit',
             nickname='Kingambit',
             tera_type='Dragon',
-            move1=pokemon.Move('Kowtow Cleave'),
-            move2=pokemon.Move('Sucker Punch'),
-            move3=pokemon.Move('Iron Head'),
-            move4=pokemon.Move('Low Kick')
+            moves=[
+                pokemon.Move('Kowtow Cleave'),
+                pokemon.Move('Sucker Punch'),
+                pokemon.Move('Iron Head'),
+                pokemon.Move('Low Kick')
+            ]
         ),
         pokemon.Pokemon(
             species='Glimmora',
             nickname='Glimmora',
             tera_type='Grass',
-            move1=pokemon.Move('Spiky Shield'),
-            move2=pokemon.Move('Sludge Bomb'),
-            move3=pokemon.Move('Meteor Beam'),
-            move4=pokemon.Move('Earth Power')
+            moves=[
+                pokemon.Move('Spiky Shield'),
+                pokemon.Move('Sludge Bomb'),
+                pokemon.Move('Meteor Beam'),
+                pokemon.Move('Earth Power')
+            ]
         ),
         pokemon.Pokemon(
             species='Amoonguss',
             nickname='Amoonguss',
             tera_type='Water',
-            move1=pokemon.Move('Protect'),
-            move2=pokemon.Move('Spore'),
-            move3=pokemon.Move('Rage Powder'),
-            move4=pokemon.Move('Pollen Puff')
+            moves=[
+                pokemon.Move('Protect'),
+                pokemon.Move('Spore'),
+                pokemon.Move('Rage Powder'),
+                pokemon.Move('Pollen Puff')
+            ]
         ),
         pokemon.Pokemon(
             species='Flutter Mane',
             nickname='Flutter Mane',
             tera_type='Fairy',
-            move1=pokemon.Move('Protect'),
-            move2=pokemon.Move('Moonblast'),
-            move3=pokemon.Move('Shadow Ball'),
-            move4=pokemon.Move('Dazzling Gleam')
+            moves=[
+                pokemon.Move('Protect'),
+                pokemon.Move('Moonblast'),
+                pokemon.Move('Shadow Ball'),
+                pokemon.Move('Dazzling Gleam')
+            ]
         ),
         pokemon.Pokemon(
             species='Zapdos-Galar',
             nickname='Zapdos-Galar',
             tera_type='Flying',
-            move1=pokemon.Move('Close Combat'),
-            move2=pokemon.Move('Brave Bird'),
-            move3=pokemon.Move('U-turn'),
-            move4=pokemon.Move('Knock Off')
+            moves=[
+                pokemon.Move('Close Combat'),
+                pokemon.Move('Brave Bird'),
+                pokemon.Move('U-turn'),
+                pokemon.Move('Knock Off')
+            ]
         ),
     ])
 
@@ -89,55 +100,67 @@ def _get_expected_nickname_team() -> pokemon.Team:
             species='Iron Hands',
             nickname='Maradona',
             tera_type='Grass',
-            move1=pokemon.Move('Fake Out'),
-            move2=pokemon.Move('Close Combat'),
-            move3=pokemon.Move('Wild Charge'),
-            move4=pokemon.Move('Volt Switch')
+            moves=[
+                pokemon.Move('Fake Out'),
+                pokemon.Move('Close Combat'),
+                pokemon.Move('Wild Charge'),
+                pokemon.Move('Volt Switch')
+            ]
         ),
         pokemon.Pokemon(
             species='Amoonguss',
             nickname='Shrom41Mor',
             tera_type='Steel',
-            move1=pokemon.Move('Spore'),
-            move2=pokemon.Move('Rage Powder'),
-            move3=pokemon.Move('Pollen Puff'),
-            move4=pokemon.Move('Protect')
+            moves=[
+                pokemon.Move('Spore'),
+                pokemon.Move('Rage Powder'),
+                pokemon.Move('Pollen Puff'),
+                pokemon.Move('Protect')
+            ]
         ),
         pokemon.Pokemon(
             species='Pelipper',
             nickname='Beaker',
             tera_type='Flying',
-            move1=pokemon.Move('Hurricane'),
-            move2=pokemon.Move('Hydro Pump'),
-            move3=pokemon.Move('Tailwind'),
-            move4=pokemon.Move('Protect')
+            moves=[
+                pokemon.Move('Hurricane'),
+                pokemon.Move('Hydro Pump'),
+                pokemon.Move('Tailwind'),
+                pokemon.Move('Protect')
+            ]
         ),
         pokemon.Pokemon(
             species='Palafin',
             nickname='Torqoise',
             tera_type='Water',
-            move1=pokemon.Move('Jet Punch'),
-            move2=pokemon.Move('Wave Crash'),
-            move3=pokemon.Move('Haze'),
-            move4=pokemon.Move('Protect')
+            moves=[
+                pokemon.Move('Jet Punch'),
+                pokemon.Move('Wave Crash'),
+                pokemon.Move('Haze'),
+                pokemon.Move('Protect')
+            ]
         ),
         pokemon.Pokemon(
             species='Baxcalibur',
             nickname='BlockBuster',
             tera_type='Poison',
-            move1=pokemon.Move('Glaive Rush'),
-            move2=pokemon.Move('Ice Shard'),
-            move3=pokemon.Move('Icicle Crash'),
-            move4=pokemon.Move('Protect')
+            moves=[
+                pokemon.Move('Glaive Rush'),
+                pokemon.Move('Ice Shard'),
+                pokemon.Move('Icicle Crash'),
+                pokemon.Move('Protect')
+            ]
         ),
         pokemon.Pokemon(
             species='Dragonite',
             nickname='ShiningArmor',
             tera_type='Flying',
-            move1=pokemon.Move('Extreme Speed'),
-            move2=pokemon.Move('Tera Blast'),
-            move3=pokemon.Move('Ice Spinner'),
-            move4=pokemon.Move('Protect')
+            moves=[
+                pokemon.Move('Extreme Speed'),
+                pokemon.Move('Tera Blast'),
+                pokemon.Move('Ice Spinner'),
+                pokemon.Move('Protect')
+            ]
         ),
     ])
 
