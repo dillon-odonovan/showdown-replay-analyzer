@@ -1,3 +1,10 @@
+"""Parse a Pokemon Team from a Pokepaste URL.
+
+Example usage:
+
+    team = parse_pokepaste(url)
+"""
+
 from typing import List
 
 import bs4
@@ -7,6 +14,14 @@ from .pokemon import Move, Pokemon, Team
 
 
 def parse_pokepaste(url: str) -> Team:
+    """Parse a Pokemon Team from a Pokepaste URL.
+
+    Args:
+        url: The URL of the Pokepaste.
+
+    Returns:
+        A Team object containing the Pokemon parsed from the Pokepaste.
+    """
     pokemon: List[Pokemon] = []
 
     pokepaste_raw_html = requests.get(url, timeout=30).text

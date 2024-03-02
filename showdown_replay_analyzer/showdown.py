@@ -1,3 +1,11 @@
+"""Retrieve and parse Pokemon Showdown replays
+
+Example usage:
+    
+    strategy = ShowdownReplayRetrievalStrategyFactory.resolve_strategy(location)
+    battle_log = strategy.retrieve_replay(location)
+    replay = parse_replay(battle_log)
+"""
 import abc
 import collections
 import dataclasses
@@ -13,17 +21,31 @@ from .pokemon import Move, Pokemon, Team
 
 
 class ShowdownReplayRetrievalStrategy(abc.ABC):
+    """Interface for retrieving Showdown replays."""
+
     @abc.abstractmethod
     def retrieve_replay(self, location: str) -> str:
+        """Retrieves the Showdown replay from the provided location.
+
+        Args:
+            location: The location of the showdown replay.
+
+        Returns:
+            The Showdown replay battle log as a string.
+        """
         raise NotImplementedError()
 
 
 class ShowdownUrlReplayRetrievalStrategy(ShowdownReplayRetrievalStrategy):
+    """Retrieves replays uploaded to replay.pokemonshowdown.com."""
+
     def retrieve_replay(self, location: str) -> str:
         return requests.get(f'{location}.json', timeout=30).text
 
 
 class ShowdownDownloadReplayRetrievalStrategy(ShowdownReplayRetrievalStrategy):
+    """Retrieves replays downloaded as local files on disk."""
+
     def retrieve_replay(self, location: str) -> str:
         with open(location, 'r', encoding='utf8') as f:
             showdown_replay_raw_html = f.read()
@@ -35,23 +57,44 @@ class ShowdownDownloadReplayRetrievalStrategy(ShowdownReplayRetrievalStrategy):
 
 
 class ShowdownReplayRetrievalStrategyFactory:
-    def resolve_strategy(self, location: str) -> ShowdownReplayRetrievalStrategy:
+    """Factory class to create instances of ShowdownReplayRetrievalStrategy."""
+
+    @staticmethod
+    def resolve_strategy(location: str) -> ShowdownReplayRetrievalStrategy:
+        """Resolves the appropriate ShowdownReplayRetrievalStrategy for the provided location.
+
+        The location can be a local file or a URL.
+        If the location is a local file, the ShowdownDownloadReplayRetrievalStrategy is returned.
+        If the location is a URL, the ShowdownUrlReplayRetrievalStrategy is returned.
+        If the location is neither a local file nor a URL, a ValueError is raised.
+
+        Args:
+            location: The location of the showdown replay.
+
+        Returns:
+            The corresponding ShowdownReplayRetrievalStrategy for the provided location.
+
+        Raises:
+            ValueError: If the location is neither a local file nor a Pokemon Showdown URL.
+        """
         if os.path.isfile(location):
             return ShowdownDownloadReplayRetrievalStrategy()
-        elif location.startswith('https://replay.pokemonshowdown.com'):
+        if location.startswith('https://replay.pokemonshowdown.com'):
             return ShowdownUrlReplayRetrievalStrategy()
-        else:
-            raise RuntimeError(f'Location {location} is not yet supported.')
-
-
-@dataclasses.dataclass
-class PokemonNickname:
-    species: str
-    nickname: str
+        raise ValueError(f'Location {location} is not yet supported.')
 
 
 @dataclasses.dataclass
 class PlayerInfo:
+    """A player's information parsed from a Showdown Replay.
+
+    Attributes:
+        player_name: The name of the player.
+        team: All Pokemon of the player's team.
+        tera_pokemon: The Pokemon which terastallized, or None if no Pokemon was terastallized.
+        leads: The Pokemon were brought in the lead (len: 2).
+        brought_to_battle: The Pokemon were brought to the battle (max len: 4).
+    """
     player_name: str
     team: Team
     tera_pokemon: Pokemon
@@ -61,6 +104,14 @@ class PlayerInfo:
 
 @dataclasses.dataclass
 class ShowdownReplay:
+    """The information of each player, the winner, and OTS status from a Showdown Replay.
+
+    Attributes:
+        player1_info: The parsed information for Player 1.
+        player2_info: The parsed information for Player 2.
+        winner: The winner of the battle (1 for Player 1, 2 for Player 2)
+        is_ots: If the game played included Open Team Sheets (OTS)
+    """
     player1_info: PlayerInfo
     player2_info: PlayerInfo
     winner: int
@@ -68,6 +119,14 @@ class ShowdownReplay:
 
 
 def parse_replay(battle_log: str) -> ShowdownReplay:
+    """Parses a Showdown Replay into a ShowdownReplay object.
+
+    Args:
+        battle_log: The raw battle log of the Showdown Replay
+
+    Returns:
+        The parsed ShowdownReplay object
+    """
     player1: str
     player2: str
     player1_team: Team = Team(pokemon=[])
