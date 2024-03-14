@@ -34,12 +34,17 @@ class Pokemon:
         nickname: The nickname of the Pokemon
         tera_type: The Tera type of the Pokemon
         moves: The moves of the Pokemon
-        struggle: Pokemon can have a 5th move of Struggle if all PP of all other moves is 0
+        was_brought: Whether this Pokemon was brought to battle
+        was_lead: Whether this Pokemon was one of the lead Pokemon in battle
+        was_terastallized: Whether this Pokemon was terastallized in battle
     """
     species: str
     nickname: str = None
     tera_type: str = None
     moves: List[Move] = dataclasses.field(default_factory=lambda: [])
+    was_brought: bool = False
+    was_lead: bool = False
+    was_terastallized: bool = False
     _struggle: Move = dataclasses.field(
         default_factory=lambda: Move('Struggle')
     )
@@ -62,7 +67,8 @@ class Pokemon:
             return self._struggle
 
         if len(self.moves) == 4:
-            raise RuntimeError('A Pokemon can only have a maximum of 4 moves')
+            raise RuntimeError(f'A Pokemon can only have a maximum of 4 moves. Current Moves = {
+                               self.moves}. New Move: {move_name}')
 
         move = Move(name=move_name)
         self.moves.append(move)
@@ -94,10 +100,16 @@ class Pokemon:
         if move_name == 'FreezeDry':
             return 'Freeze-Dry'
 
+        if move_name == 'WillOWisp':
+            return 'Will-O-Wisp'
+
         if move_name == 'Uturn':
             move_name = 'U-turn'
 
         return _CAPITAL_WORDS.sub(r'\1 \2', move_name)
+
+    def __str__(self) -> str:
+        return f'{self.species},{','.join([f"{m.name},{m.times_used}" for m in sorted(self.moves, key=lambda x: x.name)])},{self.tera_type},{self.was_brought},{self.was_lead},{self.was_terastallized}'
 
 
 @dataclasses.dataclass

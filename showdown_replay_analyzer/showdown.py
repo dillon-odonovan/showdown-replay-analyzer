@@ -95,15 +95,10 @@ class PlayerInfo:
     Attributes:
         player_name: The name of the player.
         team: All Pokemon of the player's team.
-        tera_pokemon: The Pokemon which terastallized, or None if no Pokemon was terastallized.
-        leads: The Pokemon were brought in the lead (len: 2).
-        brought_to_battle: The Pokemon were brought to the battle (max len: 4).
     """
     player_name: str
     team: Team
-    tera_pokemon: Pokemon
-    leads: List[Pokemon]
-    brought_to_battle: List[Pokemon]
+    is_winner: bool = True
 
 
 @dataclasses.dataclass
@@ -131,12 +126,10 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
     Returns:
         The parsed ShowdownReplay object
     """
-    player1: str
-    player2: str
+    player1: str = None
+    player2: str = None
     player1_team: Team = Team(pokemon=[])
     player2_team: Team = Team(pokemon=[])
-    player1_tera = None
-    player2_tera = None
     player1_brought = collections.OrderedDict()
     player2_brought = collections.OrderedDict()
 
@@ -154,7 +147,9 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
 
         match command:
             case 'player':
-                # |player|p1|player|number|
+                # |player|p1|player|avatar|elo
+                if player1 and player2:
+                    continue
                 player_number = _resolve_player(command_parts)
                 player_name = command_parts[3]
                 if _is_player1(player_number):
@@ -244,10 +239,7 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
                     if _is_player1(player_number) \
                     else player2_team
                 pokemon = team.find_by_nickname(nickname)
-                if _is_player1(player_number):
-                    player1_tera = pokemon
-                else:
-                    player2_tera = pokemon
+                pokemon.was_terastallized = True
 
             case 'win':
                 # |win|player|
@@ -257,16 +249,25 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
     player1_info = PlayerInfo(
         player_name=player1,
         team=player1_team,
-        tera_pokemon=player1_tera,
-        leads=_resolve_leads(player1_brought),
-        brought_to_battle=list(player1_brought.values())
+        is_winner=winner_name == player1
     )
+
+    for player1_lead in _resolve_leads(player1_brought):
+        player1_team.find_by_species(player1_lead.species).was_lead = True
+
+    for player2_lead in _resolve_leads(player2_brought):
+        player2_team.find_by_species(player2_lead.species).was_lead = True
+
+    for p1_b in player1_brought:
+        player1_team.find_by_species(p1_b).was_brought = True
+
+    for p2_b in player2_brought:
+        player2_team.find_by_species(p2_b).was_brought = True
+
     player2_info = PlayerInfo(
         player_name=player2,
         team=player2_team,
-        tera_pokemon=player2_tera,
-        leads=_resolve_leads(player2_brought),
-        brought_to_battle=list(player2_brought.values())
+        is_winner=winner_name == player2
     )
 
     return ShowdownReplay(player1_info=player1_info,
