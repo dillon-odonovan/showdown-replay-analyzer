@@ -1,5 +1,9 @@
 # https://github.com/github/gitignore
 
+### Project
+.out
+.sqlite
+
 ### MACOS
 # General
 .DS_Store

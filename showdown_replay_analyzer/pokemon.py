@@ -42,6 +42,8 @@ class Pokemon:
     nickname: str = None
     tera_type: str = None
     moves: List[Move] = dataclasses.field(default_factory=lambda: [])
+    ability: str = None
+    item: str = None
     was_brought: bool = False
     was_lead: bool = False
     was_terastallized: bool = False
