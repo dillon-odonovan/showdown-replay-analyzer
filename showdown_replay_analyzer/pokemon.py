@@ -3,7 +3,7 @@
 
 import dataclasses
 import re
-from typing import List
+from typing import List, Tuple
 
 
 _CAPITAL_WORDS = re.compile(r'([a-z])([A-Z])')
@@ -108,10 +108,25 @@ class Pokemon:
         if move_name == 'Uturn':
             move_name = 'U-turn'
 
+        if move_name == 'behemothbash':
+            move_name = 'Behemoth Bash'
+
         return _CAPITAL_WORDS.sub(r'\1 \2', move_name)
 
+    def get_move(self, idx: int) -> Tuple[str, int]:
+        """
+        Returns:
+            A tuple of the move name and the number of times it was used
+        """
+        if idx >= len(self.moves):
+            return (None, 0)
+        move = [x for x in sorted(
+            self.moves, key=lambda x: x.name) if not x.name == 'Struggle'][idx]
+        return (move.name, move.times_used)
+
     def __str__(self) -> str:
-        return f'{self.species},{','.join([f"{m.name},{m.times_used}" for m in sorted(self.moves, key=lambda x: x.name)])},{self.tera_type},{self.was_brought},{self.was_lead},{self.was_terastallized}'
+        moves = [self.get_move(i) for i in range(4)]
+        return f'{self.species},{','.join([f"{m[0]},{m[1]}" for m in moves])},{self.tera_type},{self.was_brought},{self.was_lead},{self.was_terastallized}'
 
 
 @dataclasses.dataclass
@@ -167,7 +182,8 @@ class Team:
             return next(
                 p
                 for p in self.pokemon
-                if p.species in (species or p.species.split('-')[0])
+                if species in (p.species, p.species.split('-')[0])
+                or species.split('-')[0] in (p.species, p.species.split('-')[0])
             )
         except StopIteration:
             return None

@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="/Users/dillonodonovan/workspace/showdown-replay-analysis/.out/showdown_replay_analyzer.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="1841"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/><expanded_item id="4" parent="1"/></tab_structure><tab_browse><current_table name="4,5:mainusage"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="usage" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort><column index="4" mode="0"/></sort><column_widths><column index="1" value="31"/><column index="2" value="300"/><column index="3" value="106"/><column index="4" value="118"/><column index="5" value="95"/><column index="6" value="76"/><column index="7" value="95"/><column index="8" value="78"/><column index="9" value="92"/><column index="10" value="78"/><column index="11" value="85"/><column index="12" value="78"/><column index="13" value="58"/><column index="14" value="76"/><column index="15" value="57"/><column index="16" value="99"/><column index="17" value="36"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1">select pokemon, move, sum(move_count)  
+from (
+select pokemon, move1 as move, move1_count as move_count, player_name
+from usage
+union all
+select pokemon, move2 as move, move2_count as move_count, player_name
+from usage
+union all
+select pokemon, move3 as move, move3_count as move_count, player_name
+from usage
+union all
+select pokemon, move4 as move, move4_count as move_count, player_name
+from usage ) pmc
+where player_name in ('ironpumpernickel', 'boxxtape', 'dillodon')
+group by pokemon , move</sql><sql name="SQL 7">-- Combine all moves into one table
+SELECT 
+    m.pokemon,
+    m.move,
+    m.total_move_count,
+    1.0 * m.total_move_count / p.total_pokemon_moves AS usage_rate
+FROM (
+    -- Sum of move counts per pokemon+move
+    SELECT pokemon, move, SUM(move_count) AS total_move_count
+    FROM (
+        SELECT pokemon, move1 AS move, move1_count AS move_count, player_name FROM usage
+        UNION ALL
+        SELECT pokemon, move2 AS move, move2_count AS move_count, player_name FROM usage
+        UNION ALL
+        SELECT pokemon, move3 AS move, move3_count AS move_count, player_name FROM usage
+        UNION ALL
+        SELECT pokemon, move4 AS move, move4_count AS move_count, player_name FROM usage
+    )
+    WHERE player_name IN ('ironpumpernickel', 'boxxtape','dillodon')
+    GROUP BY pokemon, move
+) m
+JOIN (
+    -- Total move counts per pokemon
+    SELECT pokemon, SUM(move_count) AS total_pokemon_moves
+    FROM (
+        SELECT pokemon, move1_count AS move_count, player_name FROM usage
+        UNION ALL
+        SELECT pokemon, move2_count AS move_count, player_name FROM usage
+        UNION ALL
+        SELECT pokemon, move3_count AS move_count, player_name FROM usage
+        UNION ALL
+        SELECT pokemon, move4_count AS move_count, player_name FROM usage
+    )
+    WHERE player_name IN ('ironpumpernickel', 'boxxtape','dillodon')
+    GROUP BY pokemon
+) p ON m.pokemon = p.pokemon
+ORDER BY m.pokemon, move asc;</sql><sql name="SQL 10">select 
+	pokemon,
+	sum(was_brought == 'True') as times_brought,
+	sum(was_lead == 'True') as times_lead,
+	sum(was_terastallized == 'True') as times_terastallized,
+	sum(won == 'True') as wins,
+	sum(1)  as total_games,
+	(sum(won == 'True') * 1.0)/sum(was_brought == 'True') * 100.0 as win_rate
+from usage
+where player_name in ('ironpumpernickel', 'boxxtape','dillodon')
+group by pokemon</sql><sql name="SQL 2">select 
+	pokemon,
+	sum(was_brought == 'True') as times_brought,
+	sum(was_lead == 'True') as times_lead,
+	sum(was_terastallized == 'True') as times_terastallized,
+	sum(won == 'True') as wins,
+	sum(1)  as total_games,
+	(sum(won == 'True') * 1.0)/sum(was_brought == 'True') * 100.0 as win_rate
+from usage	
+where player_name not in ('ironpumpernickel', 'boxxtape','dillodon')
+group by pokemon
+having times_brought &gt; 0
+order by win_rate desc, times_brought desc, pokemon</sql><sql name="SQL 6">select 
+	pokemon,
+	sum(was_lead == 'True') as times_lead,
+	sum(won == 'True') as wins,
+	sum(won == 'True') * 1.0 / sum(was_lead == 'True') as win_rate
+from usage
+where was_lead == 'True' and player_name in ('ironpumpernickel', 'boxxtape','dillodon')
+group by pokemon</sql><sql name="SQL 5">select 
+	pokemon,
+	tera_type,
+	sum(was_terastallized == 'True') as times_terastallized,
+	sum(won == 'True') as wins,
+	sum(1)  as total_games
+from usage
+where was_terastallized == 'True' and player_name in ('ironpumpernickel', 'boxxtape','dillodon')
+group by pokemon, tera_type</sql><sql name="SQL 6">DROP TABLE &quot;usage&quot;;
+CREATE TABLE &quot;usage&quot; (
+	&quot;id&quot;	INTEGER,
+	&quot;player_name&quot;	INTEGER,
+	&quot;pokemon&quot;	INTEGER,
+	&quot;move1&quot;	INTEGER,
+	&quot;move1_count&quot;	INTEGER,
+	&quot;move2&quot;	INTEGER,
+	&quot;move2_count&quot;	INTEGER,
+	&quot;move3&quot;	INTEGER,
+	&quot;move3_count&quot;	INTEGER,
+	&quot;move4&quot;	INTEGER,
+	&quot;move4_count&quot;	INTEGER,
+	&quot;tera_type&quot;	INTEGER,
+	&quot;was_brought&quot;	INTEGER,
+	&quot;was_lead&quot;	INTEGER,
+	&quot;was_terastallized&quot;	INTEGER,
+	&quot;won&quot;	INTEGER
+);
+commit;</sql><sql name="SQL 8">CREATE TEMPORARY TABLE team_comps AS
+SELECT 
+  replay_id,
+  GROUP_CONCAT(pokemon, ',') AS team_composition,
+  max(won) as won
+FROM (
+	select *
+	from usage
+	order by replay_id, pokemon
+)
+WHERE player_name in ('ironpumpernickel', 'boxxtape', 'dillodon') AND was_brought == 'True'
+GROUP BY replay_id;
+
+SELECT 
+  team_composition,
+  SUM(won == 'True') * 100.0 / COUNT(*) AS winrate,
+  COUNT(*) AS total_matches
+FROM team_comps
+GROUP BY team_composition
+ORDER BY total_matches DESC, winrate DESC;
+
+-- Clean up
+DROP TABLE team_comps;
+</sql><sql name="SQL 9">CREATE TEMPORARY TABLE lead_comps AS
+SELECT 
+  replay_id,
+  GROUP_CONCAT(pokemon, ',') AS lead_composition,
+  max(won) as won
+FROM (
+	select *
+	from usage
+	order by replay_id, pokemon
+)
+WHERE player_name in ('ironpumpernickel', 'boxxtape', 'dillodon') AND was_lead == 'True'
+GROUP BY replay_id;
+
+SELECT 
+  lead_composition,
+  SUM(won == 'True') * 100.0 / COUNT(*) AS winrate,
+  COUNT(*) AS total_matches
+FROM lead_comps
+GROUP BY lead_composition
+ORDER BY total_matches DESC, winrate DESC;
+
+-- Clean up
+DROP TABLE team_comps;
+</sql><sql name="SQL 11">CREATE TEMPORARY TABLE opp_restricteds AS
+SELECT 
+  replay_id,
+  GROUP_CONCAT(pokemon, ',') AS restricteds,
+  max(won) as won
+FROM (
+	select *
+	from usage
+	order by replay_id, pokemon
+)
+WHERE player_name not in ('ironpumpernickel', 'boxxtape', 'dillodon') AND pokemon in (
+'Calyrex-Ice',
+'Calyrex-Shadow',
+'Dialga-Origin',
+'Eternatus',
+'Groudon',
+'Koraidon',
+'Kyogre',
+'Lunala',
+'Miraidon',
+'Terapagos',
+'Zacian-*',
+'Zamazenta-*',
+'Zamazenta-Crowned'
+)
+GROUP BY replay_id;
+
+SELECT 
+  restricteds,
+  SUM(won == 'True') * 100.0 / COUNT(*) AS winrate,
+  COUNT(*) AS total_matches
+FROM opp_restricteds
+GROUP BY restricteds
+ORDER BY total_matches DESC, winrate DESC;</sql><current_tab id="9"/></tab_sql></sqlb_project>

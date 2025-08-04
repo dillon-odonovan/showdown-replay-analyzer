@@ -12,7 +12,7 @@ import dataclasses
 import itertools
 import os
 import textwrap
-from typing import List
+from typing import List, Tuple
 
 import bs4
 import requests
@@ -24,7 +24,7 @@ class ShowdownReplayRetrievalStrategy(abc.ABC):
     """Interface for retrieving Showdown replays."""
 
     @abc.abstractmethod
-    def retrieve_replay(self, location: str) -> str:
+    def retrieve_replay(self, location: str) -> Tuple[str, str]:
         """Retrieves the Showdown replay from the provided location.
 
         Args:
@@ -35,18 +35,31 @@ class ShowdownReplayRetrievalStrategy(abc.ABC):
         """
         raise NotImplementedError()
 
+    def get_replay_id(self, soup: bs4.BeautifulSoup):
+        """
+        Returns the replay ID from the provided BeautifulSoup object.
+
+        Args:
+            soup: The BeautifulSoup object containing the replay data.
+
+        Returns:
+            The replay ID as a string.
+        """
+        return soup.find('input', attrs={'name': 'replayid'}).attrs['value']
+
 
 class ShowdownUrlReplayRetrievalStrategy(ShowdownReplayRetrievalStrategy):
     """Retrieves replays uploaded to replay.pokemonshowdown.com."""
 
-    def retrieve_replay(self, location: str) -> str:
-        return requests.get(f'{location}.json', timeout=30).text
+    def retrieve_replay(self, location: str) -> Tuple[str, str]:
+        all_text = requests.get(f'{location}.json', timeout=30).text
+        return (super().get_replay_id(all_text), requests.get(f'{location}.json', timeout=30).text)
 
 
 class ShowdownDownloadReplayRetrievalStrategy(ShowdownReplayRetrievalStrategy):
     """Retrieves replays downloaded as local files on disk."""
 
-    def retrieve_replay(self, location: str) -> str:
+    def retrieve_replay(self, location: str) -> Tuple[str, str]:
         with open(location, 'r', encoding='utf8') as f:
             showdown_replay_raw_html = f.read()
             parsed_html = bs4.BeautifulSoup(
@@ -57,7 +70,7 @@ class ShowdownDownloadReplayRetrievalStrategy(ShowdownReplayRetrievalStrategy):
                 'script',
                 class_='battle-log-data'
             )
-            return textwrap.dedent(battle_log_data.text)
+            return (super().get_replay_id(parsed_html), textwrap.dedent(battle_log_data.text))
 
 
 class ShowdownReplayRetrievalStrategyFactory:
@@ -110,14 +123,16 @@ class ShowdownReplay:
         player2_info: The parsed information for Player 2.
         winner: The winner of the battle (1 for Player 1, 2 for Player 2)
         is_ots: If the game played included Open Team Sheets (OTS)
+        replay_id: The ID of the replay
     """
     player1_info: PlayerInfo
     player2_info: PlayerInfo
     winner: int
+    replay_id: str
     is_ots: bool = True
 
 
-def parse_replay(battle_log: str) -> ShowdownReplay:
+def parse_replay(replay_id: str, battle_log: str) -> ShowdownReplay:
     """Parses a Showdown Replay into a ShowdownReplay object.
 
     Args:
@@ -167,7 +182,8 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
                 team = player1_team \
                     if _is_player1(player_number)\
                     else player2_team
-                pokemon = Pokemon(species=species)
+                pokemon = Pokemon(
+                    species=species, nickname=species.split('-')[0])
                 team.add_pokemon(pokemon)
 
             case 'showteam':
@@ -235,10 +251,13 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
                 # |-terastallize|p1a: nickname|type|
                 player_number = _resolve_player(command_parts)
                 nickname = _resolve_nickname(command_parts)
+                tera_type = _resolve_tera_type(command_parts)
                 team = player1_team \
                     if _is_player1(player_number) \
                     else player2_team
                 pokemon = team.find_by_nickname(nickname)
+                if pokemon.tera_type is None:
+                    pokemon.tera_type = tera_type
                 pokemon.was_terastallized = True
 
             case 'win':
@@ -270,19 +289,28 @@ def parse_replay(battle_log: str) -> ShowdownReplay:
         is_winner=winner_name == player2
     )
 
-    return ShowdownReplay(player1_info=player1_info,
-                          player2_info=player2_info,
-                          winner=winner)
+    return ShowdownReplay(
+        player1_info=player1_info,
+        player2_info=player2_info,
+        winner=winner,
+        is_ots=is_ots,
+        replay_id=replay_id
+    )
 
 
 def _resolve_player(command_parts: List[str]) -> str:
-    # 'p1a: ...'
+    # 'cmd|p1a: ...'
     return command_parts[2][:2]
 
 
 def _resolve_nickname(command_parts: List[str]) -> str:
-    # 'p1a: nickname'
+    # 'cmd|p1a: nickname'
     return command_parts[2][5:]
+
+
+def _resolve_tera_type(command_parts: List[str]) -> str:
+    # cmd|p1a: nickname|type|
+    return command_parts[3]
 
 
 def _resolve_species(command_parts: List[str]) -> str:
